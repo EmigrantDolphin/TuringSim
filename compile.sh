@@ -4,7 +4,7 @@ if [[ "$1" == "compile" ]]
 then
 
 	# dlls
-    dlls="-r:System -r:System.Windows.Forms -r:System.Drawing"
+    dlls="-r:System -r:System.Windows.Forms -r:System.Drawing -r:mscorlib"
 
     # .cs files
     mysrc=""
