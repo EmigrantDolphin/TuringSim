@@ -43,7 +43,6 @@ public class Button : IDrawable, IClickable, IContainer{
         if (e.Location.X >= Point.X && e.Location.X <= Point.X + Size.Width &&
             e.Location.Y >= Point.Y && e.Location.Y <= Point.Y + Size.Height)
             action();
-            Console.WriteLine(e.Clicks);
     }
     
 }
