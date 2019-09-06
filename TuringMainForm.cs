@@ -11,7 +11,7 @@ class TuringMainForm : Form{
     public TuringMainForm(){
         FormInit();
 
-        simulator = new Simulator("lala");
+        simulator = new Simulator();
         simulator.Point = new Point (10, 10);
         simulator.Size = new Size (FormWidth - 50, 100);
     }
@@ -31,7 +31,7 @@ class TuringMainForm : Form{
     }
 
     private void OnClick(object sender, MouseEventArgs e){
-        Console.WriteLine("ASS");
+        simulator.Click(sender, e);
     }
 
 }
