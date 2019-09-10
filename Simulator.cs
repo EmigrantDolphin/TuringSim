@@ -39,6 +39,8 @@ class Simulator : IContainer, IDrawable {
     private Rectangle outlineRectangle;
 
     private readonly List<Simbol> tape = new List<Simbol>();
+    private readonly HorizontalSlider slider;
+    private int sliderXOffset = 0;
     private readonly int simbolXOffset = 1;
     private readonly int simbolYOffset = 5;
     private readonly Dictionary<string, Command> commands = new Dictionary<string, Command>();
@@ -46,7 +48,7 @@ class Simulator : IContainer, IDrawable {
     private readonly List<Button> buttons = new List<Button>();
 
     private DateTime savedTime = DateTime.Now;
-    private float headMoveInterval = 0.3f;
+    private float headMoveIntervalMili = 300;
     private Simbol selectedSimbol;
     private Command selectedCommand;
     private readonly Head head;
@@ -68,22 +70,34 @@ class Simulator : IContainer, IDrawable {
         selectedCommand = new Command("","","",Direction.Stay,"0"); // first command only new state matters.
         head = new Head();
         text = new Text();
+        slider = new HorizontalSlider();
         InitButtons();
         Reposition();
         invalidate();
     }
 
     private void Reposition(){
-        for (int i = 0; i < tape.Count; i++)
-            tape[i].Point = new Point(i * (tape[i].Size.Width + simbolXOffset) + this.Point.X + simbolXOffset, this.Point.Y + simbolYOffset);
-        head.Point = new Point(selectedSimbol.Point.X, selectedSimbol.Point.Y + selectedSimbol.Size.Height + 2);
+        sliderXOffset = 0;
+        RepositionTape();
+        
         outlineRectangle = new Rectangle(point.X, point.Y, size.Width, size.Height);
-        text.Point = new Point(point.X + 3, head.Point.Y + head.Size.Height + 3);
+
+        slider.Point = new Point(point.X, head.Point.Y + head.Size.Height +1);
+        slider.Size = new Size(size.Width, 10);
+        slider.TotalItemSize = Math.Abs(tape[tape.Count-1].Point.X + tape[tape.Count-1].Size.Width) + Math.Abs(tape[0].Point.X);
+        
+        text.Point = new Point(point.X + 3, slider.Point.Y + slider.Size.Height + 3);
 
         for (int i = 0; i < buttons.Count; i++)
             buttons[i].Point = new Point(point.X + 10 + (buttons[i].Size.Width + 10) * i, 
                                          point.Y + size.Height - buttons[i].Size.Height);
 
+    }
+    private void RepositionTape(){
+        for (int i = 0; i < tape.Count; i++)
+            tape[i].Point = new Point(i * (tape[i].Size.Width + simbolXOffset) + this.Point.X + simbolXOffset + sliderXOffset, this.Point.Y + simbolYOffset);
+        head.Point = new Point(selectedSimbol.Point.X, selectedSimbol.Point.Y + selectedSimbol.Size.Height + 2);
+        slider.TotalItemSize = Math.Abs(tape[tape.Count-1].Point.X + tape[tape.Count-1].Size.Width) + Math.Abs(tape[0].Point.X);
     }
 
     private void InitButtons(){
@@ -180,7 +194,7 @@ class Simulator : IContainer, IDrawable {
 
     public void Loop(){
         while(true)
-            if ((DateTime.Now - savedTime).Seconds > headMoveInterval){
+            if ((DateTime.Now - savedTime).Milliseconds > headMoveIntervalMili){
                 ProcessSelectedSimbol();
                 savedTime = DateTime.Now;
             }
@@ -217,14 +231,14 @@ class Simulator : IContainer, IDrawable {
             if (headPos < 0){
                 tape.Insert(0, new Simbol(" "));
                 headPos++;
-                Reposition();
+                RepositionTape();
             }
         }
         if (selectedCommand.dir == Direction.R){
             headPos++;
             if (headPos >= tape.Count){
                 tape.Add(new Simbol(" "));
-                Reposition();
+                RepositionTape();
             }
         }
         selectedSimbol = tape[headPos];
@@ -235,9 +249,14 @@ class Simulator : IContainer, IDrawable {
     public void Draw(object sender, PaintEventArgs e){
         e.Graphics.DrawRectangle(new Pen(Color.Red), outlineRectangle);
         text.Draw(sender, e);
-        head.Draw(sender, e);
-        foreach (var simbol in tape)
-            simbol.Draw(sender, e);
+        slider.Draw(sender, e);
+        if (head.Point.X > point.X && head.Point.X + head.Size.Width <= point.X + size.Width)
+            head.Draw(sender, e);
+
+        for (int i = 0; i < tape.Count; i++)
+            if (tape[i].Point.X > point.X && tape[i].Point.X + tape[i].Size.Width < point.X + size.Width)
+                tape[i].Draw(sender, e);
+            
         foreach (var button in buttons)
             button.Draw(sender, e);
     }
@@ -245,10 +264,17 @@ class Simulator : IContainer, IDrawable {
     public void Click(object sender, MouseEventArgs e){
         foreach(var button in buttons)
             button.OnClick(sender, e);
+        slider.OnMouseClick(sender, e);
     }
     public void OnMouseMove(object sender, MouseEventArgs e){
         foreach(var button in buttons)
             button.OnMouseMove(sender, e);
+        slider.OnMouseMove(sender, e, ref sliderXOffset);
+        RepositionTape();
+        invalidate();
+    }
+    public void OnMouseUp(object sender, MouseEventArgs e){
+        slider.OnMouseUp(sender, e);
     }
 
     public void OnClosing(object sender, CancelEventArgs e){

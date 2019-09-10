@@ -32,6 +32,7 @@ class TuringMainForm : Form{
         try{
             simulators.Add(new Simulator(this.Invalidate, QueueForSimulatorRemoval));
             Reposition();
+            text.Message = "";
         }catch (Exception e){
             text.Message = e.Message;
             this.Invalidate();
@@ -41,7 +42,7 @@ class TuringMainForm : Form{
 
     private void Reposition(){
         for(int i = 0; i < simulators.Count; i++){
-            simulators[i].Size = new Size (FormWidth - 50, 100);
+            simulators[i].Size = new Size (FormWidth - 50, 110);
             simulators[i].Point = new Point (10, 50 + i * (simulators[i].Size.Height + 10));
         }
     }
@@ -53,9 +54,11 @@ class TuringMainForm : Form{
         this.MinimizeBox = false;       
         this.DoubleBuffered = true;
         this.Paint += new PaintEventHandler(this.OnDraw);
-        this.MouseClick += new MouseEventHandler(this.OnClick);
+        //this.MouseClick += new MouseEventHandler(this.OnClick);
         this.Closing += new CancelEventHandler(this.OnClosing);
         this.MouseMove += new MouseEventHandler(this.OnMouseMove);
+        this.MouseUp += new MouseEventHandler(this.OnMouseUp);
+        this.MouseDown += new MouseEventHandler(this.OnMouseDown);
     }
 
     private void OnDraw(object sender, PaintEventArgs e){
@@ -66,7 +69,7 @@ class TuringMainForm : Form{
 
     }
 
-    private void OnClick(object sender, MouseEventArgs e){
+    private void OnMouseDown(object sender, MouseEventArgs e){
         foreach(var simulator in simulators)
             simulator.Click(sender, e);
         buttonAdd.OnClick(sender, e);
@@ -74,8 +77,8 @@ class TuringMainForm : Form{
         for (int i = 0; i < simulatorsToBeRemoved.Count; i++){
             simulators.Remove(simulatorsToBeRemoved.Dequeue());
             Reposition();
-            this.Invalidate();
         }
+            this.Invalidate();
     }
 
     private void OnClosing(object sender, CancelEventArgs e){
@@ -88,6 +91,10 @@ class TuringMainForm : Form{
             simulator.OnMouseMove(sender, e);
         buttonAdd.OnMouseMove(sender, e);
         this.Invalidate();
+    }
+    private void OnMouseUp(object sender, MouseEventArgs e){
+        foreach(var simulator in simulators)
+            simulator.OnMouseUp(sender, e);
     }
 
 }
