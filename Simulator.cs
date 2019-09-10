@@ -4,7 +4,7 @@ using System.IO;
 using System;
 using System.Collections.Generic;
 using System.Threading;
-
+using System.ComponentModel;
 
 class Simulator : IContainer, IDrawable {
     enum Direction { R, L, Stay }
@@ -38,32 +38,25 @@ class Simulator : IContainer, IDrawable {
     private Size size = new Size(50, 50);
     private Rectangle outlineRectangle;
 
-    private List<Simbol> tape = new List<Simbol>();
-    private int simbolXOffset = 1;
-    private int simbolYOffset = 5;
-    private Dictionary<string, Command> commands = new Dictionary<string, Command>();
+    private readonly List<Simbol> tape = new List<Simbol>();
+    private readonly int simbolXOffset = 1;
+    private readonly int simbolYOffset = 5;
+    private readonly Dictionary<string, Command> commands = new Dictionary<string, Command>();
     private int headPos;
-    private List<Button> buttons = new List<Button>();
+    private readonly List<Button> buttons = new List<Button>();
 
     private DateTime savedTime = DateTime.Now;
     private float headMoveInterval = 0.3f;
     private Simbol selectedSimbol;
     private Command selectedCommand;
-    private Head head;
+    private readonly Head head;
 
-    private TuringMainForm form;
     private Thread thread;
 
-    private Action invalidate;
-    private Action<Simulator> exit;
+    private readonly Action invalidate;
+    private readonly Action<Simulator> exit;
 
-    Font font;
-    float fontSize = 16;
-    SolidBrush textBrush = new SolidBrush(Color.Black);
-    SolidBrush rectBrush = new SolidBrush(Color.Green);
-    FontFamily fontFamily = new FontFamily("Arial");
-    Point messagePoint;
-    string message;
+    Text text;
 
     public Simulator(Action invalidate, Action<Simulator> exit){
         this.invalidate = invalidate;
@@ -71,10 +64,10 @@ class Simulator : IContainer, IDrawable {
  
         GatherData();
 
-        font = new Font(fontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
         selectedSimbol = tape[headPos];
         selectedCommand = new Command("","","",Direction.Stay,"0"); // first command only new state matters.
         head = new Head();
+        text = new Text();
         InitButtons();
         Reposition();
         invalidate();
@@ -85,7 +78,7 @@ class Simulator : IContainer, IDrawable {
             tape[i].Point = new Point(i * (tape[i].Size.Width + simbolXOffset) + this.Point.X + simbolXOffset, this.Point.Y + simbolYOffset);
         head.Point = new Point(selectedSimbol.Point.X, selectedSimbol.Point.Y + selectedSimbol.Size.Height + 2);
         outlineRectangle = new Rectangle(point.X, point.Y, size.Width, size.Height);
-        messagePoint = new Point(point.X + 3, head.Point.Y + head.Size.Height + 3);
+        text.Point = new Point(point.X + 3, head.Point.Y + head.Size.Height + 3);
 
         for (int i = 0; i < buttons.Count; i++)
             buttons[i].Point = new Point(point.X + 10 + (buttons[i].Size.Width + 10) * i, 
@@ -95,10 +88,17 @@ class Simulator : IContainer, IDrawable {
 
     private void InitButtons(){
         var startButton = new Button(() => {
-            thread = new Thread(new ThreadStart(Loop));
-            thread.Start();   
+            if (thread == null)
+                thread = new Thread(new ThreadStart(Loop));
+            if (!thread.IsAlive)
+                thread.Start();   
         });
-        var stopButton = new Button(() => thread.Abort());
+        var stopButton = new Button(() => {
+            if (thread != null){
+                thread.Abort();
+                thread = null;   
+            }
+        });
         var stepButton = new Button(() => ProcessSelectedSimbol());
         var exitButton = new Button(() => {
             if (thread != null)
@@ -124,11 +124,8 @@ class Simulator : IContainer, IDrawable {
 
         if (openFileDialog.ShowDialog() == DialogResult.OK)
             filePath = openFileDialog.FileName;
-
-        
-        if (filePath == "")
+        else
             throw new Exception("File Path was not selected");
-            
 
         string[] lines = File.ReadAllLines(filePath);
         
@@ -140,6 +137,8 @@ class Simulator : IContainer, IDrawable {
 
         for (int i = 0; i < lines[1].Length; i++)
             tape.Add(new Simbol(lines[1][i].ToString()));
+        if (headPos < 0 || headPos >= tape.Count)
+            throw new Exception("Defined head position is out of bounds from tape");
 
         for (int i = 2; i < lines.Length; i++){
             string[] commandData = lines[i].Split(" ");
@@ -183,7 +182,6 @@ class Simulator : IContainer, IDrawable {
         while(true)
             if ((DateTime.Now - savedTime).Seconds > headMoveInterval){
                 ProcessSelectedSimbol();
-
                 savedTime = DateTime.Now;
             }
     }
@@ -192,17 +190,17 @@ class Simulator : IContainer, IDrawable {
         try{
             try{
                 selectedCommand = commands[selectedCommand.newState+selectedSimbol.Value];
-            }catch(Exception e){
-                throw new Exception("new state doesn't contan this simbol");
+            }catch(Exception){
+                throw new Exception("new state doesn't contain this simbol");
             }
-        }catch(Exception e){
+        }catch(Exception){
             try{
                 selectedCommand = commands[selectedCommand.newState+"*"];
-            }catch(Exception d){
-                if (selectedCommand.newState.Contains("halt"))
-                    message = "Halted";
+            }catch(Exception){
+                if (selectedCommand.newState.ToLower().Contains("halt"))
+                    text.Message = "Halted";
                 else
-                    message = "No command found for state: " + selectedCommand.newState + ", simbol: " + selectedSimbol.Value;
+                    text.Message = "No command found for state: " + selectedCommand.newState + ", simbol: " + selectedSimbol.Value;
                 invalidate();
                 if (thread != null)
                     thread.Abort();
@@ -236,7 +234,7 @@ class Simulator : IContainer, IDrawable {
 
     public void Draw(object sender, PaintEventArgs e){
         e.Graphics.DrawRectangle(new Pen(Color.Red), outlineRectangle);
-        e.Graphics.DrawString(message, font, textBrush, messagePoint);
+        text.Draw(sender, e);
         head.Draw(sender, e);
         foreach (var simbol in tape)
             simbol.Draw(sender, e);
@@ -247,6 +245,15 @@ class Simulator : IContainer, IDrawable {
     public void Click(object sender, MouseEventArgs e){
         foreach(var button in buttons)
             button.OnClick(sender, e);
+    }
+    public void OnMouseMove(object sender, MouseEventArgs e){
+        foreach(var button in buttons)
+            button.OnMouseMove(sender, e);
+    }
+
+    public void OnClosing(object sender, CancelEventArgs e){
+        if (thread != null)
+            thread.Abort();
     }
     
 }

@@ -2,23 +2,28 @@ using System.Windows.Forms;
 using System.Drawing;
 
 class Simbol : IContainer, IDrawable{
-    public Point Point {get; set;} = new Point(13, 13);
-    public Size Size {get; set;} = new Size (20, 20);
+    public Point Point {
+        get {return simbol.Point;}
+        set {simbol.Point = value;}
+    }
+    public Size Size {get; set;}
 
-    public string Value {get; set;}
-    Font font;
-    readonly float fontSize = Settings.TapeFontSize;
-    SolidBrush brush;
+    public string Value {
+        get{return simbol.Message;}
+        set{simbol.Message = value;}
+    }
+    private readonly float fontSize = 20;
+    private readonly Text simbol;
+
     public Simbol(string value){
-        Value = value;
-        font = new Font(new FontFamily("Arial"), fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
+        simbol = new Text(fontSize);
+        simbol.Message = value;
+
         Size = new Size((int)fontSize, (int)fontSize);
-        brush = new SolidBrush(Color.Black);
     }
 
-    public void Draw(object sender, PaintEventArgs e){
-        
-        e.Graphics.DrawString(Value, font, brush, this.Point);
+    public void Draw(object sender, PaintEventArgs e){      
+        simbol.Draw(sender, e);
     }
 
 }

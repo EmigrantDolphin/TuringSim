@@ -1,34 +1,26 @@
 using System.Windows.Forms;
 using System.Drawing;
 using System;
-using System.Threading;
 using System.ComponentModel;
 using System.Collections.Generic;
 
 class TuringMainForm : Form{
-    public static readonly int FormHeight = 720;
-    public static readonly int FormWidth = 1280;
+    public const int FormHeight = 720;
+    public const int FormWidth = 1280;
 
-    List<Simulator> simulators = new List<Simulator>();
-    Queue<Simulator> simulatorsToBeRemoved = new Queue<Simulator>();
+    private readonly List<Simulator> simulators = new List<Simulator>();
+    private readonly Queue<Simulator> simulatorsToBeRemoved = new Queue<Simulator>();
 
-    private Button buttonAdd;
-
-    Font font;
-    float fontSize = 16;
-    SolidBrush textBrush = new SolidBrush(Color.Black);
-    SolidBrush rectBrush = new SolidBrush(Color.Green);
-    FontFamily fontFamily = new FontFamily("Arial");
-    Point messagePoint;
-    string message;
+    private readonly Button buttonAdd;
+    private readonly Text text;
     public TuringMainForm(){
         FormInit();
 
         buttonAdd = new Button(() => CreateSimulator());
         buttonAdd.Point = new Point(FormWidth/2, 0); 
         buttonAdd.Text = "Add";
-        font = new Font(fontFamily, fontSize, FontStyle.Regular, GraphicsUnit.Pixel);
-        messagePoint = new Point(50, buttonAdd.Size.Height + 3);
+        text = new Text();
+        text.Point = new Point(50, buttonAdd.Size.Height + 3);
 
     }
 
@@ -41,7 +33,7 @@ class TuringMainForm : Form{
             simulators.Add(new Simulator(this.Invalidate, QueueForSimulatorRemoval));
             Reposition();
         }catch (Exception e){
-            message = e.Message;
+            text.Message = e.Message;
             this.Invalidate();
             return;
         }
@@ -63,13 +55,14 @@ class TuringMainForm : Form{
         this.Paint += new PaintEventHandler(this.OnDraw);
         this.MouseClick += new MouseEventHandler(this.OnClick);
         this.Closing += new CancelEventHandler(this.OnClosing);
+        this.MouseMove += new MouseEventHandler(this.OnMouseMove);
     }
 
     private void OnDraw(object sender, PaintEventArgs e){
         foreach(var simulator in simulators)
             simulator.Draw(sender, e);
         buttonAdd.Draw(sender, e);
-        e.Graphics.DrawString(message, font, textBrush, messagePoint);
+        text.Draw(sender, e);
 
     }
 
@@ -86,7 +79,15 @@ class TuringMainForm : Form{
     }
 
     private void OnClosing(object sender, CancelEventArgs e){
-        
+        foreach(var simulator in simulators)
+            simulator.OnClosing(sender, e);
+    }
+
+    private void OnMouseMove(object sender, MouseEventArgs e){
+        foreach(var simulator in simulators)
+            simulator.OnMouseMove(sender, e);
+        buttonAdd.OnMouseMove(sender, e);
+        this.Invalidate();
     }
 
 }

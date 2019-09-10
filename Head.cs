@@ -15,8 +15,8 @@ public class Head : IDrawable, IContainer{
     private Point point;
     private Size size;
 
-    Rectangle fillRectangle;
-    SolidBrush brush = new SolidBrush(Color.Red);
+    private Rectangle fillRectangle;
+    private readonly SolidBrush brush = new SolidBrush(Color.Red);
 
     public Head(){
         Size = new Size(20,20);
